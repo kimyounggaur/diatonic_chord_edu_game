@@ -10,6 +10,7 @@ import type { PlayerProgress } from './storage/store';
 import { audio } from './audio/AudioService';
 import LevelPlayer from './components/LevelPlayer';
 import ChallengeHub from './components/ChallengeHub';
+import Rulebook from './components/Rulebook';
 const KingdomScene = lazy(() => import('./components/KingdomScene'));
 type Screen = 'home'|'map'|'codex'|'practice'|'challenge';
 const FUNCTION_NAMES = {tonic:'토닉 · 집',predominant:'프리도미넌트 · 길',dominant:'도미넌트 · 문'};
@@ -34,7 +35,7 @@ function App(){
  const {progress,settings,storageWarning,updateSettings,dismissStorageWarning} = useGameStore();
  const initialScreen = location.hash.slice(1) as Screen;
  const [screen,setScreen]=useState<Screen>(['home','map','codex','practice','challenge'].includes(initialScreen)?initialScreen:'home');
- const [level,setLevel]=useState<LevelDefinition|null>(null); const [reviewItem,setReviewItem]=useState<ReviewItem|null>(null); const [settingsOpen,setSettingsOpen]=useState(false); const [helpOpen,setHelpOpen]=useState(false);
+ const [level,setLevel]=useState<LevelDefinition|null>(null); const [reviewItem,setReviewItem]=useState<ReviewItem|null>(null); const [settingsOpen,setSettingsOpen]=useState(false); const [helpOpen,setHelpOpen]=useState(false); const [rulebookOpen,setRulebookOpen]=useState(false);
  const [activePuzzle,setActivePuzzle]=useState(false); const playingRef=useRef(false); playingRef.current=activePuzzle; const [pendingNav,setPendingNav]=useState<Screen|null>(null);
  const [selectedWorld,setSelectedWorld]=useState(''); const [codexKey,setCodexKey]=useState('C-major');
  const screenRef=useRef(screen);
@@ -56,7 +57,7 @@ function App(){
  const exitLevel=()=>{audio.stop();setLevel(null);navigate(reviewItem?'challenge':'map',true);};
  return <div className="app-shell">
   <aside className="sidebar"><button className="brand" onClick={()=>navigate('home')} aria-label="코드 크래프터 홈"><span className="brand-symbol"><Layers3 size={25}/></span><span>코드 크래프터<small>CHORD CRAFTER</small></span></button><div className="sidebar-label">톤테라 탐험 가이드</div><nav>{navItems.map(({id,label,icon:Icon})=><button key={id} className={`nav-item ${screen===id&&!level?'active':''}`} onClick={()=>navigate(id)}><Icon size={20}/>{label}{id==='map'&&<span className="nav-count">{settings.advanced?15:12}</span>}</button>)}</nav><div className="sidebar-bottom"><div className="mini-quote"><span className="lumi-avatar">✦</span><p>작은 음 하나가<br/>새로운 세계를 열어요.</p></div><button className="nav-item" onClick={()=>setHelpOpen(true)}><CircleHelp size={20}/>모험 안내서</button><button className="nav-item" onClick={()=>setSettingsOpen(true)}><Settings2 size={20}/>환경 설정</button><div className="sidebar-foot">음악을 이해하는 새로운 방법</div></div></aside>
-  <div className="workspace"><header className="topbar"><div className="breadcrumb"><span className="mobile-brand"><Layers3 size={22}/></span><span>톤테라</span><ChevronRight size={14}/><strong>{level?'왕국 복원 중':navItems.find(x=>x.id===screen)?.label}</strong></div><div className="topbar-actions"><span className="star-total"><Star size={17} fill="currentColor"/>{stars}<span className="desktop-only">별 조각</span></span><button className="icon-button" aria-label={settings.muted?'음소거 해제':'음소거'} onClick={()=>{void audio.unlock();updateSettings({muted:!settings.muted})}}>{settings.muted?<VolumeX size={20}/>:<Volume2 size={20}/>}</button><button className="icon-button" aria-label="환경 설정 열기" onClick={()=>setSettingsOpen(true)}><Settings2 size={20}/></button><span className="user-avatar" aria-label="견습 크래프터">C</span></div></header>
+  <div className="workspace"><header className="topbar"><div className="breadcrumb"><span className="mobile-brand"><Layers3 size={22}/></span><span>톤테라</span><ChevronRight size={14}/><strong>{level?'왕국 복원 중':navItems.find(x=>x.id===screen)?.label}</strong></div><div className="topbar-actions"><button className="rulebook-trigger" aria-label="게임 롤북 열기" aria-haspopup="dialog" onClick={()=>setRulebookOpen(true)}><BookOpen size={19}/><span>게임 롤북</span></button><span className="star-total"><Star size={17} fill="currentColor"/>{stars}<span className="desktop-only">별 조각</span></span><button className="icon-button" aria-label={settings.muted?'음소거 해제':'음소거'} onClick={()=>{void audio.unlock();updateSettings({muted:!settings.muted})}}>{settings.muted?<VolumeX size={20}/>:<Volume2 size={20}/>}</button><button className="icon-button" aria-label="환경 설정 열기" onClick={()=>setSettingsOpen(true)}><Settings2 size={20}/></button><span className="user-avatar" aria-label="견습 크래프터">C</span></div></header>
   {storageWarning&&<div className="storage-warning" role="alert">{storageWarning}<button onClick={dismissStorageWarning} aria-label="알림 닫기"><X size={18}/></button></div>}
   <main className={level?'main-content level-content':'main-content'}>
    {level?<LevelPlayer key={level.id} level={level} review={reviewItem} onExit={exitLevel} onNext={startLevel} onPhaseChange={setActivePuzzle}/>:screen==='home'?<>
@@ -79,6 +80,7 @@ function App(){
   </div><nav className="mobile-nav" aria-label="주 메뉴">{navItems.map(({id,label,icon:Icon})=><button key={id} className={screen===id&&!level?'active':''} onClick={()=>navigate(id)} aria-label={label}><Icon size={20}/><span>{label.replace('모험의 시작','홈').replace('조성 지도','지도').replace('코드 도감','도감').replace('자유 연습','연습').replace('도전의 탑','도전')}</span></button>)}</nav>
   {pendingNav&&<Modal title="진행 중인 임무" onClose={()=>setPendingNav(null)}><h3>이번 임무를 나갈까요?</h3><p className="callout">완료한 별은 유지돼요. 진행 중인 임무는 다시 시작하게 돼요.</p><div className="game-actions"><button className="secondary-button" onClick={()=>setPendingNav(null)}>계속 복원하기</button><button className="primary-button" onClick={()=>{const target=pendingNav;setPendingNav(null);navigate(target,true)}}>임무 나가기</button></div></Modal>}
   {settingsOpen&&<SettingsModal onClose={()=>setSettingsOpen(false)}/>}
+  {rulebookOpen&&<Rulebook onClose={()=>setRulebookOpen(false)}/>}
   {helpOpen&&<Modal title="톤테라 모험 안내서" onClose={()=>setHelpOpen(false)}><div className="help-steps">{[['01','음계를 준비해요','조표를 확인하고 으뜸음부터 7개의 음을 순서대로 놓아요.'],['02','하나씩 건너뛰어요','음계에서 루트, 세 번째, 다섯 번째 음을 탑에 쌓아요.'],['03','반음으로 정체를 밝혀요','4+3은 장, 3+4는 단, 3+3은 감, 4+4는 증3화음이에요.'],['04','화음으로 왕국을 복원해요','로마 숫자와 기능을 연결하고 네 화음 진행을 연주해요.']].map(([n,t,p])=><div key={n}><b>{n}</b><section><h3>{t}</h3><p>{p}</p></section></div>)}</div><p className="callout">카드를 탭하면 다음 칸에 놓여요. 놓인 카드를 탭하면 되돌릴 수 있어요. 마우스와 터치 드래그도 지원해요. 듣기는 감점이 없고, 힌트는 한 번에 15점 차감돼요. 세 번 시도해도 어렵다면 안내를 보고 직접 다시 완성할 수 있어요.</p></Modal>}
  </div>;
 }
