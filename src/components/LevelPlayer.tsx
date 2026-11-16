@@ -4,9 +4,9 @@ import { ArrowLeft, ArrowRight, Check, Hand, HelpCircle, Music2, RotateCcw, Spar
 import type { DiatonicTriad, LevelDefinition, SpelledNote } from '../domain/theory';
 import { buildAllDiatonicTriads, buildDiatonicTriad, getTriadIntervals, SCALE_PATTERNS } from '../domain/theory';
 import { getKey, LEVELS, WORLDS } from '../data/worlds';
-import { calculateAttemptScore, calculateStars } from '../domain/learning';
-import type { LearningConcept } from '../domain/learning';
-import { createSeededQuestionSet, shuffleSeeded } from '../domain/questions';
+import { adaptiveChoices, calculateAttemptScore, calculateStars } from '../domain/learning';
+import type { LearningConcept, ReviewItem } from '../domain/learning';
+import { createSeededQuestionSet, resolutionProgression, shuffleSeeded } from '../domain/questions';
 import { useGameStore } from '../storage/store';
 import { audio } from '../audio/AudioService';
 
@@ -26,6 +26,8 @@ interface Task {
   prefill?: string[];
   npc?: string;
   audioOnly?: boolean;
+  reviewOf?: string;
+  sourceTaskId?: string;
 }
 const qualityNames: Record<string, string> = { major: '장 · M', minor: '단 · m', diminished: '감 · °', augmented: '증 · +' };
 const functionNames: Record<string, string> = { tonic: '집 · 토닉', predominant: '길 · 프리도미넌트', dominant: '문 · 도미넌트' };
@@ -103,10 +105,19 @@ function makeTasks(level: LevelDefinition): Task[] {
   }
 }
 
-export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { level: LevelDefinition; onExit: () => void; onNext: (level: LevelDefinition) => void; onPhaseChange?: (playing:boolean) => void }) {
-  const { settings, completeLevel, addReview } = useGameStore();
+export default function LevelPlayer({ level, review, onExit, onNext, onPhaseChange }: { level: LevelDefinition; review?: ReviewItem | null; onExit: () => void; onNext: (level: LevelDefinition) => void; onPhaseChange?: (playing:boolean) => void }) {
+  const { settings, completeLevel, addReview, markReviewCorrect } = useGameStore();
   const key = getKey(level.keyId);
-  const tasks = useMemo(() => makeTasks(level), [level.id]);
+  const baseTasks = useMemo(() => {
+    const all = makeTasks(level);
+    if (!review) return all;
+    const matched = (review.taskId ? all.find(task => task.id === review.taskId) : undefined) || (!review.taskId ? (all.find(task => task.degree === review.degree) || all.find(task => !task.degree)) : undefined);
+    return [matched || all[0]];
+  }, [level.id, review?.id]);
+  const [reviewTasks, setReviewTasks] = useState<Task[]>([]);
+  const tasks = useMemo(() => [...baseTasks, ...reviewTasks], [baseTasks, reviewTasks]);
+  const initialReviews = useRef(useGameStore.getState().progress.reviewQueue);
+  const scheduledReviewIds = useRef(new Set<string>());
   const [screen, setScreen] = useState<'intro' | 'game' | 'result'>('intro');
   useEffect(() => { onPhaseChange?.(screen === 'game'); return () => onPhaseChange?.(false); }, [screen, onPhaseChange]);
   const [index, setIndex] = useState(0);
@@ -119,6 +130,7 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
   const [autoReveal, setAutoReveal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
+  const [correctStreak, setCorrectStreak] = useState(0);
   const [assistedEver, setAssistedEver] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [showNotes, setShowNotes] = useState(!task.audioOnly || settings.visualAudio);
@@ -143,7 +155,9 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
   useEffect(() => { alive.current = true; return () => { alive.current = false; audio.stop(); }; }, []);
   useEffect(() => {
     audio.stop();
-    setScreen('intro'); setIndex(0); setScores([]); setAssistedEver(false); setLeaveConfirm(false); completedRef.current = false;
+    setScreen('intro'); setIndex(0); setScores([]); setCorrectStreak(0); setAssistedEver(false); setLeaveConfirm(false); completedRef.current = false;
+    setReviewTasks([]); scheduledReviewIds.current.clear();
+    initialReviews.current = useGameStore.getState().progress.reviewQueue;
   }, [level.id]);
   useEffect(() => {
     setAnswers(task.prefill || []); setSelectedSlot(null); setErrors(0); setHints(0); setAssisted(false); setAutoReveal(false); setSuccess(false); setFeedback(''); setShowNotes(!task.audioOnly || settings.visualAudio); setListened(false);
@@ -215,7 +229,7 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
     try {
       await audio.unlock();
       if (task.kind === 'timeline' || task.kind === 'playback') await audio.playProgression(progression, 80, rhythm);
-      else if (task.kind === 'resolution') await audio.playProgression([progression[progression.length - 1], triads[0]], 80, rhythm);
+      else if (task.kind === 'resolution') await audio.playProgression(resolutionProgression(triads, progression, level.templateId), 80, rhythm);
       else await audio.playNotes(task.notes || key.scale, mode, 80);
       if (alive.current) setListened(true);
     } finally { if (alive.current) setPlaying(false); }
@@ -224,6 +238,14 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
   const validate = () => {
     if (success || autoReveal) return;
     if (correctNow()) {
+      const concept = review?.concept || conceptFor[level.templateId] || 'stackedThirds';
+      const degree = review?.degree || task.degree || 1;
+      const matchingReview = review || initialReviews.current.find(item => item.keyId === key.id && item.concept === concept && item.degree === degree && (!item.levelId || (item.levelId === level.id && item.taskId === task.id)));
+      // Only an independently correct answer without hints counts for the exact earlier item.
+      if (!task.reviewOf && errors === 0 && hints === 0 && matchingReview && initialReviews.current.some(item => item.id === matchingReview.id)) {
+        markReviewCorrect(matchingReview.id);
+        initialReviews.current = initialReviews.current.filter(item => item.id !== matchingReview.id);
+      }
       setSuccess(true); setFeedback(task.explanation); audio.success();
       if (settings.vibration && navigator.vibrate) navigator.vibrate(30);
       if (task.kind === 'scale') void play('scale');
@@ -232,7 +254,17 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
     }
     const nextErrors = errors + 1;
     setErrors(nextErrors);
-    addReview(key.id, conceptFor[level.templateId] || 'stackedThirds', task.degree || 1);
+    const concept = review?.concept || conceptFor[level.templateId] || 'stackedThirds';
+    const reviewId = review?.id || `${key.id}:${concept}:${task.degree || 1}:${level.id}:${task.id}`;
+    // A retry of this item is immediate; append a different degree for the session's end.
+    if (!review && !task.reviewOf && !scheduledReviewIds.current.has(reviewId)) {
+      const alternative = baseTasks.find(candidate => candidate.kind === task.kind && candidate.degree && candidate.degree !== task.degree);
+      if (alternative) {
+        scheduledReviewIds.current.add(reviewId);
+        setReviewTasks(old => [...old, { ...alternative, id: `review-${task.id}`, reviewOf: task.id, sourceTaskId: alternative.id, title: `복습 · ${alternative.title}` }]);
+      }
+    }
+    addReview(key.id, concept, review?.degree || task.degree || 1, review ? review.levelId : level.id, review ? review.taskId : (task.sourceTaskId || task.id));
     if (nextErrors >= 3) {
       setAssisted(true); setAssistedEver(true); setAutoReveal(true); setAnswers(task.correct);
       setFeedback('완성 경로를 함께 확인해요. 아래의 ‘직접 다시 만들기’를 눌러 같은 문제를 다시 완성하면 통과할 수 있어요.');
@@ -244,8 +276,9 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
     const score = calculateAttemptScore(errors, hints, assisted);
     const updated = [...scores, score];
     setScores(updated);
+    setCorrectStreak(streak => errors === 0 && hints === 0 && !assisted ? streak + 1 : 0);
     if (index < tasks.length - 1) { setIndex(index + 1); return; }
-    if (!completedRef.current) { completeLevel(level, updated, assistedEver || assisted); completedRef.current = true; }
+    if (!review && !completedRef.current) { completeLevel(level, updated, assistedEver || assisted); completedRef.current = true; }
     setScreen('result');
   };
   const replay = () => { setAutoReveal(false); setAnswers(task.prefill || []); setSelectedSlot(null); setFeedback('이제 직접 같은 문제를 재현해 주세요. 천천히 해도 괜찮아요.'); };
@@ -256,12 +289,14 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
   const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const stars = calculateStars(scores, assistedEver);
 
+  if (review?.taskId && task.id !== review.taskId) return <section className="result-panel"><h1>복습 문제를 불러올 수 없어요.</h1><p>저장된 문제 정보가 현재 콘텐츠와 맞지 않아요. 다른 복습을 선택해 주세요.</p><button className="secondary-button" onClick={onExit}>복습 목록으로 돌아가기</button></section>;
+
   if (screen === 'intro') return <section className="level-intro">
     <button className="text-button" onClick={onExit}><ArrowLeft size={18} /> 지도 돌아가기</button>
     <div className="level-eyebrow">{world?.name || '톤테라'} · {key.mode === 'major' ? '태양 도시' : '달 동굴'}</div>
     <div className="intro-card">
       <div className="intro-symbol"><Music2 size={42}/></div>
-      <span className="eyebrow">새로운 복원 임무</span>
+      <span className="eyebrow">{review ? '기억을 되살리는 복습' : '새로운 복원 임무'}</span>
       <h1>{level.title}</h1><p>{key.koreanName} · 약 {level.templateId === 'progression' ? '5' : '3'}분</p>
       <div className="signature-panel"><span>{key.tonic.display} {key.mode === 'major' ? 'Major' : 'Natural minor'}</span><strong>{signatureNotes.length ? signatureNotes.join(' · ') : '조표 없음 ♮'}</strong></div>
       {key.mode === 'naturalMinor' && <p className="input-help">자연단조의 v는 {label(triads[4].symbol)}인 단화음이에요. 7음을 올리는 화성단음계는 자유 연습의 별도 모드에서 다뤄요.</p>}
@@ -274,12 +309,12 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
 
   if (screen === 'result') return <section className="result-panel">
     <span className="eyebrow">RESTORATION COMPLETE</span><div className="result-stars" aria-label={`별 ${stars}개`}>{[1, 2, 3].map(n => <Star key={n} size={52} fill={n <= stars ? 'currentColor' : 'none'} className={n <= stars ? 'earned' : ''}/>)}</div>
-    <h1>빛이 다시 연결됐어요!</h1><p>{key.koreanName} · {level.title}</p>
+    <h1>{review ? '복습을 마쳤어요!' : '빛이 다시 연결됐어요!'}</h1><p>{key.koreanName} · {level.title}</p>
     <div className="result-stats"><div><strong>{avg}</strong><span>평균 점수</span></div><div><strong>{tasks.length}</strong><span>완성한 과제</span></div><div><strong>{assistedEver ? '함께' : '스스로'}</strong><span>이번 복원</span></div></div>
     <div className="npc-dialogue"><span className="npc-avatar">✦</span><div><strong>루미</strong><p>만든 원리를 기억해 둬. 다른 조성에서도 같은 규칙으로 다시 만들 수 있어!</p></div></div>
-    <p className="saved-note"><Check size={16}/> 별과 개념별 숙련도를 저장했어요.</p>
-    {nextLevel && <button className="primary-button" onClick={() => onNext(nextLevel)}>다음 임무 <ArrowRight size={19}/></button>}
-    <button className="secondary-button" onClick={onExit}>왕국 지도로 돌아가기</button>
+    <p className="saved-note"><Check size={16}/>{review ? (errors === 0 && hints === 0 ? '복습 기록을 저장했어요.' : '틀린 문제는 다음에 다시 연습할 수 있어요.') : '별과 개념별 숙련도를 저장했어요.'}</p>
+    {!review && nextLevel && <button className="primary-button" onClick={() => onNext(nextLevel)}>다음 임무 <ArrowRight size={19}/></button>}
+    <button className="secondary-button" onClick={onExit}>{review ? '복습 목록으로 돌아가기' : '왕국 지도로 돌아가기'}</button>
     <details open={level.templateId === 'quality'}><summary>이번 조성의 일곱 화음</summary><div className="completed-chords">{triads.map(t => <button key={t.degree} className="choice-card" onClick={() => void audio.playNotes(t.notes)} aria-label={`${t.symbol}, ${t.romanNumeral}, ${qualityNames[t.quality]} 화음 듣기`}><strong>{label(t.symbol)}</strong><span>{t.romanNumeral} · {qualityNames[t.quality].split(' · ')[0]}</span></button>)}</div><p><strong>발견한 품질 패턴</strong><br/>{triads.map(t => qualityNames[t.quality].split(' · ')[0]).join(' – ')}</p></details>
   </section>;
 
@@ -311,11 +346,11 @@ export default function LevelPlayer({ level, onExit, onNext, onPhaseChange }: { 
           {task.kind === 'quality' && <div className="interval-meter">{getTriadIntervals(task.triad.notes).map((gap, i) => <div key={i}><span>{i === 0 ? '아래' : '위'} 3도</span><div className="semitone-beads">{Array.from({length:gap}, (_, j) => <i key={j}/>)}</div><strong>{gap}반음</strong></div>)}</div>}
         </div>}
 
-        {!isSlots && !['halfsteps', 'playback'].includes(task.kind) && <div className={`choice-grid ${task.kind === 'function' ? 'function-islands' : ''}`} aria-label="정답 선택">{task.options.map(value => <button className={`choice-card ${answers.includes(value) ? 'selected' : ''} ${autoReveal && task.correct.includes(value) ? 'correct' : ''}`} key={value} aria-pressed={answers.includes(value)} onClick={() => place(value)} disabled={success || autoReveal}>{task.kind === 'function' && <span className="function-icon">{value.startsWith('집') ? '⌂' : value.startsWith('길') ? '↝' : '♜'}</span>}<strong>{label(value)}</strong></button>)}</div>}
+        {!isSlots && !['halfsteps', 'playback'].includes(task.kind) && <div className={`choice-grid ${task.kind === 'function' ? 'function-islands' : ''}`} aria-label="정답 선택">{adaptiveChoices(task.options, task.correct, correctStreak).map(value => <button className={`choice-card ${answers.includes(value) ? 'selected' : ''} ${autoReveal && task.correct.includes(value) ? 'correct' : ''}`} key={value} aria-pressed={answers.includes(value)} onClick={() => place(value)} disabled={success || autoReveal}>{task.kind === 'function' && <span className="function-icon">{value.startsWith('집') ? '⌂' : value.startsWith('길') ? '↝' : '♜'}</span>}<strong>{label(value)}</strong></button>)}</div>}
 
         {task.kind === 'playback' && <div className="playback-panel"><div className="completed-chords">{progression.map((t, i) => <div className="progression-chord" key={i}><span>{t.romanNumeral}</span><strong>{label(t.symbol)}</strong></div>)}</div><div className="rhythm-picker" role="group" aria-label="연주 리듬"><button className={`choice-card ${rhythm === 'block' ? 'selected' : ''}`} aria-pressed={rhythm === 'block'} onClick={() => setRhythm('block')}>동시에 · 블록 코드</button><button className={`choice-card ${rhythm === 'arpeggio' ? 'selected' : ''}`} aria-pressed={rhythm === 'arpeggio'} onClick={() => setRhythm('arpeggio')}>차례로 · 아르페지오</button></div><button className="primary-button" onClick={() => void play()} disabled={playing}><Volume2 size={20}/>{playing ? '진행이 연주되고 있어요…' : listened ? '진행 다시 듣기' : '진행 연주하기'}</button>{listened && <p className="saved-note"><Check size={17}/>전체 진행을 들었어요.</p>}</div>}
 
-        <div className="npc-dialogue"><span className="npc-avatar" aria-hidden="true">{task.npc === '테르티' ? '▦' : task.npc === '센토' ? '◈' : task.npc === '로마' ? 'Ⅳ' : '✦'}</span><div aria-live="polite" aria-atomic="true"><strong>{task.npc || '루미'}</strong><p>{feedback || (index === 0 ? '천천히 직접 만들어 보자. 듣기는 몇 번 해도 감점이 없어!' : task.rule)}</p></div></div>
+        <div className="npc-dialogue"><span className="npc-avatar" aria-hidden="true">{task.npc === '테르티' ? '▦' : task.npc === '센토' ? '◈' : task.npc === '로마' ? 'Ⅳ' : '✦'}</span><div aria-live="polite" aria-atomic="true"><strong>{task.npc || '루미'}</strong><p>{feedback || (index === 0 ? '천천히 직접 만들어 보자. 듣기는 몇 번 해도 감점이 없어!' : correctStreak >= 3 ? '스스로 생각해 보고 필요하면 힌트를 눌러요.' : task.rule)}</p></div></div>
         {(success || autoReveal) && <div className={`feedback ${success ? 'success' : 'assisted'}`} role="status">{success ? <><Sparkles size={19}/>원리를 발견했어요. 다음 단계로 이어 가요!</> : <><HelpCircle size={19}/>완성 경로: {task.correct.map(answerLabel).join(' → ')}</>}</div>}
         {autoReveal && <div className="assist-panel"><p>{task.explanation}</p><button className="primary-button" onClick={replay}><RotateCcw size={18}/>직접 다시 만들기</button></div>}
         <div className="game-actions">{!success && !autoReveal ? <>

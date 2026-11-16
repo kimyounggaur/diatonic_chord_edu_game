@@ -1,10 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { buildAllDiatonicTriads, buildDiatonicTriad, buildScale, getHarmonicFunction, getRomanNumeral, getTriadIntervals, identifyTriadQuality, parseNote, transposeProgression, validateSpelling } from '../src/domain/theory';
+import { buildAllDiatonicTriads, buildDiatonicTriad, buildKeySignature, buildScale, getHarmonicFunction, getRomanNumeral, getTriadIntervals, identifyTriadQuality, parseNote, transposeProgression, validateSpelling } from '../src/domain/theory';
 import { CORE_LEVELS, KEYS, LEVELS, WORLDS, getKey, templates } from '../src/data/worlds';
-import { createSeededQuestionSet, seededRandom, shuffleSeeded } from '../src/domain/questions';
+import { createSeededQuestionSet, resolutionProgression, seededRandom, shuffleSeeded } from '../src/domain/questions';
 const notes = (names: string) => names.split(' ').map(parseNote);
 const scaleNames = (id: string) => buildScale(getKey(id)).map(note => note.display);
 const chordNames = (id: string) => buildAllDiatonicTriads(getKey(id)).map(chord => chord.symbol);
+
+describe('해결 듣기', () => {
+  it('기능 학습에서는 보스 진행의 마지막 화음이 IV여도 V→I를 재생한다', () => {
+    const key = getKey('G-major');
+    const triads = buildAllDiatonicTriads(key);
+    const progression = key.progression.map(degree => triads[degree - 1]);
+    expect(progression.map(chord => chord.symbol)).toEqual(['G', 'D', 'Em', 'C']);
+    expect(resolutionProgression(triads, progression, 'function').map(chord => chord.symbol)).toEqual(['D', 'G']);
+    expect(resolutionProgression(triads, progression, 'progression').map(chord => chord.symbol)).toEqual(['C', 'G']);
+  });
+  it('자연단조의 기능 해결은 장화음 V가 아닌 v→i다', () => {
+    const key = getKey('A-naturalMinor');
+    const triads = buildAllDiatonicTriads(key);
+    expect(resolutionProgression(triads, key.progression.map(degree => triads[degree - 1]), 'function').map(chord => chord.symbol)).toEqual(['Em', 'Am']);
+  });
+});
+
+describe('자유 연습 조표', () => {
+  it('기존 30개 장조·자연단조의 표기와 생성 조표가 일치한다', () => {
+    for (const key of KEYS) expect(buildKeySignature(key), key.id).toEqual(key.keySignature);
+  });
+  it('으뜸음을 유지하며 장조에서 자연단조로 전환하면 조표를 새로 계산한다', () => {
+    const tonic = parseNote('C');
+    expect(buildKeySignature({tonic, mode: 'major'})).toEqual({});
+    expect(Object.entries(buildKeySignature({tonic, mode: 'naturalMinor'}))).toEqual([['B', 'b'], ['E', 'b'], ['A', 'b']]);
+  });
+  it('화성단음계의 올린 7음은 조표가 아닌 임시표다', () => {
+    const tonic = parseNote('A');
+    expect(buildKeySignature({tonic, mode: 'harmonicMinor'})).toEqual({});
+    expect(buildScale({tonic, mode: 'harmonicMinor'})[6].display).toBe('G♯');
+  });
+});
 
 describe('철자를 보존하는 음계와 다이아토닉 3화음', () => {
   it('C 장조 음계는 C D E F G A B', () => expect(scaleNames('C-major')).toEqual(['C', 'D', 'E', 'F', 'G', 'A', 'B']));

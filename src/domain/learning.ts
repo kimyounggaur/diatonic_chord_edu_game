@@ -7,6 +7,8 @@ export interface ReviewItem {
   keyId: string;
   concept: LearningConcept;
   degree: number;
+  levelId?: string;
+  taskId?: string;
   errorCount: number;
   lastReviewedAt: string;
   dueAt: string;
@@ -95,4 +97,11 @@ export function selectReviewQuestions(
   return [...unique.values()]
     .sort((a, b) => priority(b) - priority(a) || a.id.localeCompare(b.id))
     .slice(0, Math.max(0, Math.floor(limit)));
+}
+
+/** Keep the correct choice available while gradually introducing more distractors. */
+export function adaptiveChoices(options: string[], correct: string[], correctStreak: number): string[] {
+  if (correctStreak >= 3 || options.length <= 4 || correct.length !== 1 || !options.includes(correct[0])) return options;
+  const allowed = new Set([correct[0], ...options.filter(option => option !== correct[0]).slice(0, 3)]);
+  return options.filter(option => allowed.has(option));
 }

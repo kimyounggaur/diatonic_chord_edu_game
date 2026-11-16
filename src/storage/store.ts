@@ -56,7 +56,8 @@ export interface GameStore {
   resetProgress: () => void;
   exportProgress: () => string;
   importProgress: (json: string) => boolean;
-  addReview: (keyId: string, concept: LearningConcept, degree: number) => void;
+  addReview: (keyId: string, concept: LearningConcept, degree: number, levelId?: string, taskId?: string) => void;
+  markReviewCorrect: (id: string) => void;
   dismissStorageWarning: () => void;
 }
 
@@ -98,7 +99,7 @@ export function parseSave(json: string): Save | null {
       const [keyId, concept, ...rest] = id.split(':');
       return rest.length === 0 && validKey(keyId) && CONCEPTS.includes(concept as LearningConcept) && validNumber(value, 0, 100);
     })) return null;
-    if (!p.reviewQueue.every(item => isObject(item) && isSafeString(item.id) && validKey(item.keyId) && CONCEPTS.includes(item.concept as LearningConcept) && validNumber(item.degree, 1, 7) && Number.isInteger(item.degree) && validNumber(item.errorCount, 0, 100000) && Number.isInteger(item.errorCount) && validNumber(item.correctStreak, 0, 100000) && Number.isInteger(item.correctStreak) && validDate(item.lastReviewedAt) && validDate(item.dueAt))) return null;
+    if (!p.reviewQueue.every(item => isObject(item) && (item.levelId === undefined || validLevel(item.levelId)) && (item.taskId === undefined || isSafeString(item.taskId)) && isSafeString(item.id) && validKey(item.keyId) && CONCEPTS.includes(item.concept as LearningConcept) && validNumber(item.degree, 1, 7) && Number.isInteger(item.degree) && validNumber(item.errorCount, 0, 100000) && Number.isInteger(item.errorCount) && validNumber(item.correctStreak, 0, 100000) && Number.isInteger(item.correctStreak) && validDate(item.lastReviewedAt) && validDate(item.dueAt))) return null;
     const settings = parseSettings(root.settings ?? DEFAULT_SETTINGS);
     if (!settings) return null;
     const progress: PlayerProgress = {
@@ -170,7 +171,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       codexUnlocks: unique([...old.codexUnlocks, level.keyId, ...unlocked]),
       cosmetics: unique([...old.cosmetics, ...(level.templateId === 'progression' ? ['marimba'] : []), ...(level.templateId === 'relative' ? ['8bit'] : [])]),
       lastPlayedAt: now,
-      reviewQueue: old.reviewQueue.map(item => item.keyId === level.keyId && concepts.includes(item.concept) && average >= 75 ? { ...item, correctStreak: item.correctStreak + 1, lastReviewedAt: now, dueAt: new Date(Date.now() + (item.correctStreak + 1) * 86_400_000).toISOString() } : item).filter(item => item.correctStreak < 3),
+      reviewQueue: old.reviewQueue,
     };
     set({ progress, storageWarning: persist(progress, get().settings) });
   },
@@ -192,14 +193,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ progress: save.progress, settings: save.settings, storageWarning: persist(save.progress, save.settings) });
     return true;
   },
-  addReview(keyId, concept, degree) {
+  addReview(keyId, concept, degree, levelId, taskId) {
     if (!validKey(keyId) || !CONCEPTS.includes(concept) || !Number.isInteger(degree) || degree < 1 || degree > 7) return;
+    if ((levelId === undefined) !== (taskId === undefined) || (levelId !== undefined && (!validLevel(levelId) || LEVELS.find(level => level.id === levelId)?.keyId !== keyId || !isSafeString(taskId)))) return;
     const old = get().progress;
-    const id = `${keyId}:${concept}:${degree}`;
+    const id = `${keyId}:${concept}:${degree}${levelId ? `:${levelId}:${taskId}` : ''}`;
     const previous = old.reviewQueue.find(item => item.id === id);
     const now = new Date().toISOString();
-    const item: ReviewItem = { id, keyId, concept, degree, errorCount: (previous?.errorCount ?? 0) + 1, lastReviewedAt: previous?.lastReviewedAt ?? now, dueAt: now, correctStreak: 0 };
+    const item: ReviewItem = { id, keyId, concept, degree, ...(levelId && taskId ? { levelId, taskId } : {}), errorCount: (previous?.errorCount ?? 0) + 1, lastReviewedAt: previous?.lastReviewedAt ?? now, dueAt: now, correctStreak: 0 };
     const progress = { ...old, reviewQueue: [...old.reviewQueue.filter(review => review.id !== id), item], lastPlayedAt: now };
+    set({ progress, storageWarning: persist(progress, get().settings) });
+  },
+  markReviewCorrect(id) {
+    const old = get().progress;
+    const item = old.reviewQueue.find(review => review.id === id);
+    if (!item) return;
+    const now = Date.now();
+    const streak = item.correctStreak + 1;
+    const reviewQueue = streak >= 3
+      ? old.reviewQueue.filter(review => review.id !== id)
+      : old.reviewQueue.map(review => review.id === id
+        ? { ...review, correctStreak: streak, lastReviewedAt: new Date(now).toISOString(), dueAt: new Date(now + streak * 86_400_000).toISOString() }
+        : review);
+    const progress = { ...old, reviewQueue, lastPlayedAt: new Date(now).toISOString() };
     set({ progress, storageWarning: persist(progress, get().settings) });
   },
   dismissStorageWarning() { set({ storageWarning: null }); },

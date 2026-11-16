@@ -84,6 +84,18 @@ export function buildScale(key: ScaleSource): SpelledNote[] {
     return spell(letter, accidental);
   });
 }
+/** Harmonic minor raises its seventh as an accidental, not in the key signature. */
+export function buildKeySignature(key: ScaleSource): Partial<Record<Letter, Accidental>> {
+  const scale = buildScale({ ...key, mode: key.mode === 'harmonicMinor' ? 'naturalMinor' : key.mode });
+  const altered = scale.filter(note => note.accidental !== 'natural');
+  const order: Letter[] = altered.some(note => note.accidental.includes('b'))
+    ? ['B', 'E', 'A', 'D', 'G', 'C', 'F']
+    : ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
+  return Object.fromEntries(order.flatMap(letter => {
+    const note = altered.find(candidate => candidate.letter === letter);
+    return note ? [[letter, note.accidental]] : [];
+  })) as Partial<Record<Letter, Accidental>>;
+}
 export function getTriadIntervals(notes: readonly SpelledNote[]): [number, number] {
   if (notes.length !== 3) throw new Error('3화음에는 세 음이 필요합니다.');
   return [mod12(notes[1].midiClass - notes[0].midiClass), mod12(notes[2].midiClass - notes[1].midiClass)];

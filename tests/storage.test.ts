@@ -95,4 +95,40 @@ describe('validated local progress persistence', () => {
     const reloaded = await import('../src/storage/store');
     expect(reloaded.useGameStore.getState().progress.reviewQueue[0].degree).toBe(2);
   });
+  it('advances only the reviewed item, never unrelated items from a level average', async () => {
+    const { useGameStore } = await import('../src/storage/store');
+    const level = LEVELS.find(item => item.keyId === 'C-major' && item.templateId === 'stack')!;
+    useGameStore.getState().addReview('C-major', 'stackedThirds', 2);
+    useGameStore.getState().addReview('C-major', 'stackedThirds', 7);
+    useGameStore.getState().completeLevel(level, [100], false);
+    expect(useGameStore.getState().progress.reviewQueue.map(item => item.correctStreak)).toEqual([0, 0]);
+    useGameStore.getState().markReviewCorrect('C-major:stackedThirds:2');
+    let queue = useGameStore.getState().progress.reviewQueue;
+    expect(queue.find(item => item.degree === 2)?.correctStreak).toBe(1);
+    expect(queue.find(item => item.degree === 7)?.correctStreak).toBe(0);
+    expect(Date.parse(queue.find(item => item.degree === 2)!.dueAt)).toBeGreaterThan(Date.now());
+    useGameStore.getState().markReviewCorrect('C-major:stackedThirds:2');
+    useGameStore.getState().markReviewCorrect('C-major:stackedThirds:2');
+    queue = useGameStore.getState().progress.reviewQueue;
+    expect(queue.map(item => item.degree)).toEqual([7]);
+    vi.resetModules();
+    const reloaded = await import('../src/storage/store');
+    expect(reloaded.useGameStore.getState().progress.reviewQueue.map(item => item.degree)).toEqual([7]);
+  });
+
+  it('keeps distinct tasks with the same concept and degree after reload', async () => {
+    const { useGameStore } = await import('../src/storage/store');
+    const level = LEVELS.find(item => item.keyId === 'C-major' && item.templateId === 'scale')!;
+    useGameStore.getState().addReview('C-major', 'scaleSpelling', 1, level.id, 'scale');
+    useGameStore.getState().addReview('C-major', 'scaleSpelling', 1, level.id, 'halfsteps');
+    let queue = useGameStore.getState().progress.reviewQueue;
+    expect(queue.map(item => item.taskId)).toEqual(['scale', 'halfsteps']);
+    useGameStore.getState().markReviewCorrect(queue[0].id);
+    queue = useGameStore.getState().progress.reviewQueue;
+    expect(queue.map(item => item.correctStreak)).toEqual([1, 0]);
+    vi.resetModules();
+    const reloaded = await import('../src/storage/store');
+    expect(reloaded.useGameStore.getState().progress.reviewQueue.map(item => item.taskId)).toEqual(['scale', 'halfsteps']);
+  });
+
 });

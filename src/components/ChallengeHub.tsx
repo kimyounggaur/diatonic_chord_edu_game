@@ -5,7 +5,7 @@ import { getTriadIntervals } from '../domain/theory';
 import { CHALLENGE_MODES, generateChallengeQuestions } from '../domain/challenges';
 import type { ChallengeMode, ChallengeQuestion } from '../domain/challenges';
 import { getKey, LEVELS, WORLDS } from '../data/worlds';
-import { selectReviewQuestions } from '../domain/learning';
+import { selectReviewQuestions, type ReviewItem } from '../domain/learning';
 import { useGameStore } from '../storage/store';
 import type { PlayerProgress } from '../storage/store';
 import { audio } from '../audio/AudioService';
@@ -31,7 +31,7 @@ function availableLevel(level: LevelDefinition, progress: PlayerProgress, advanc
   return at >= 0 && stages.slice(0, at).every(item => completed.has(item.id));
 }
 
-export default function ChallengeHub({ onStart }: { onStart: (level: LevelDefinition) => void }) {
+export default function ChallengeHub({ onStart }: { onStart: (level: LevelDefinition, item?: ReviewItem) => void }) {
   const { progress, settings } = useGameStore();
   const [selectedMode, setSelectedMode] = useState<ChallengeMode>('signature');
   const [screen, setScreen] = useState<'select' | 'active' | 'result'>('select');
@@ -172,8 +172,8 @@ export default function ChallengeHub({ onStart }: { onStart: (level: LevelDefini
     {screen !== 'active' && <>
       <div className="section-heading"><h2>다시 만나면 좋은 개념</h2></div>
       {review.length ? <div className="level-list panel">{review.map(item => {
-        const candidate = LEVELS.find(level => level.keyId === item.keyId && level.learningObjectives.includes(item.concept) && availableLevel(level, progress, settings.advanced));
-        return <button key={item.id} className="level-row" disabled={!candidate} onClick={() => { if (candidate && availableLevel(candidate, useGameStore.getState().progress, useGameStore.getState().settings.advanced)) onStart(candidate); }}><span className="level-number"><RotateCcw size={18}/></span><span><strong>{getKey(item.keyId).koreanName}</strong><small>{CONCEPT_NAMES[item.concept] || '화음 원리 복습'} · {item.degree}도{candidate ? '' : ' · 해당 조성 모험 후 복습 가능'}</small></span><ChevronRight size={18}/></button>;
+        const candidate = LEVELS.find(level => level.keyId === item.keyId && (item.levelId ? level.id === item.levelId : level.learningObjectives.includes(item.concept)) && availableLevel(level, progress, settings.advanced));
+        return <button key={item.id} className="level-row" disabled={!candidate} onClick={() => { if (candidate && availableLevel(candidate, useGameStore.getState().progress, useGameStore.getState().settings.advanced)) onStart(candidate, item); }}><span className="level-number"><RotateCcw size={18}/></span><span><strong>{getKey(item.keyId).koreanName}</strong><small>{CONCEPT_NAMES[item.concept] || '화음 원리 복습'} · {item.degree}도{item.taskId ? '' : ' · 기존 개념 복습'}{candidate ? '' : ' · 해당 조성 모험 후 복습 가능'}</small></span><ChevronRight size={18}/></button>;
       })}</div> : <div className="empty-state"><ShieldCheck size={28}/><h3>지금은 복습할 기록이 없어요.</h3><p>모험 중 어려웠던 개념이 생기면 이곳에 모아 둘게요.</p></div>}
     </>}
   </>;

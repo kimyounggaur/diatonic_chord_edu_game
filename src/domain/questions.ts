@@ -1,5 +1,12 @@
-import type { LevelDefinition } from './theory';
+import type { DiatonicTriad, LevelDefinition } from './theory';
 export interface GeneratedQuestion { id: string; degree: number; keyId: string }
+
+/** Function exercises demonstrate V→I; the boss resolves its actual final chord. */
+export function resolutionProgression(triads: DiatonicTriad[], progression: DiatonicTriad[], template: LevelDefinition['templateId']): DiatonicTriad[] {
+  const source = template === 'function' ? triads[4] : progression[progression.length - 1];
+  if (!source || !triads[0]) throw new Error('해결을 재생할 화음이 없습니다.');
+  return [source, triads[0]];
+}
 /** FNV-1a followed by mulberry32: stable across browser engines and sessions. */
 export function seededRandom(seed: string): () => number {
   let state = 2166136261;

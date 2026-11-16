@@ -62,3 +62,14 @@ describe('review prioritization', () => {
     expect(items.map(review => review.id)).toEqual(['z', 'a']);
   });
 });
+
+
+describe('adaptive choices', () => {
+  it('retains the answer before expanding choices after three independent answers', async () => {
+    const { adaptiveChoices } = await import('../src/domain/learning');
+    const choices = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
+    expect(adaptiveChoices(choices, ['vi'], 2)).toEqual(['I', 'ii', 'iii', 'vi']);
+    expect(adaptiveChoices(choices, ['vi'], 3)).toEqual(choices);
+    expect(adaptiveChoices(choices, ['missing'], 0)).toEqual(choices);
+  });
+});
