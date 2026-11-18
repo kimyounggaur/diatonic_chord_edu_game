@@ -46,16 +46,22 @@ export function Chapter({index}:{index:number}) {
  </>;
  case 2:return <>
   <SectionHead n="03" title="음계와 조표의 비밀" description="음계는 음을 순서대로 늘어놓은 재료 상자예요."/>
+  <Illustration title="음계의 길을 따라" caption="음계는 한 중심음에서 출발해 음을 차례로 나열한 길이에요. 각 음 사이의 간격이 장음계와 단음계의 성격을 만들어요."><img className="rb-scene" src={`${import.meta.env.BASE_URL}rulebook/scene-scale.webp`} alt="음악의 길을 탐험하는 음계 일러스트" loading="lazy"/></Illustration>
   <Illustration title="C 장조의 일곱 음" caption="C부터 B까지 글자 순서대로 한 번씩 사용해요. C 장조에는 조표가 없어요."><NoteLane notes={['C','D','E','F','G','A','B']}/></Illustration>
   <Illustration title="장음계의 간격" caption="전음은 2반음, 반음은 1반음이에요. C 장조에서는 E–F와 B–C가 반음이에요."><div className="rb-intervals">{['전','전','반','전','전','전','반'].map((v,i)=><div key={i} className={v==='반'?'half':''}><strong>{v}</strong><small>{v==='반'?'1':'2'}반음</small></div>)}</div><div className="rb-interval-label">C → D → E → F → G → A → B → C</div></Illustration>
+  <Illustration title="건반에서 반음 찾기" caption="서로 이웃한 건반 사이는 반음이에요. 흰 건반 E–F와 B–C 사이에는 검은 건반이 없어 바로 반음이에요. C–D처럼 사이에 검은 건반 하나가 있으면 전음이에요."><svg className="rb-keyboard" viewBox="0 0 420 150" role="img" aria-label="C부터 다음 C까지 피아노 건반. E와 F, B와 다음 C는 이웃한 흰 건반입니다.">{['C','D','E','F','G','A','B','C'].map((n,i)=><g key={i}><rect x={i*52+2} y="2" width="51" height="116" rx="4" fill={i===2||i===3||i===6||i===7?'#ddf3e5':'#fff'} stroke="#758b82"/><text x={i*52+27} y="105" textAnchor="middle" fontSize="15" fontFamily="sans-serif" fill="#25473a">{n}</text></g>)}{[0,1,3,4,5].map(i=><rect key={i} x={i*52+37} y="2" width="28" height="68" rx="3" fill="#314a42"/>)}<text x="156" y="141" textAnchor="middle" fontSize="13" fontFamily="sans-serif" fill="#25473a">E–F 반음</text><text x="364" y="141" textAnchor="middle" fontSize="13" fontFamily="sans-serif" fill="#25473a">B–C 반음</text></svg></Illustration>
+  <Illustration title="장음계와 자연단음계 비교" caption="C 장음계는 전·전·반·전·전·전·반, A 자연단음계는 전·반·전·전·반·전·전으로 진행해요. 두 음계는 같은 흰 건반을 쓰지만 출발음과 반음 위치가 달라요."><div className="rb-compare-rows"><div><strong>C 장음계</strong><span>C D E F G A B C</span><small>전 · 전 · 반 · 전 · 전 · 전 · 반</small></div><div><strong>A 자연단음계</strong><span>A B C D E F G A</span><small>전 · 반 · 전 · 전 · 반 · 전 · 전</small></div></div></Illustration>
   <Illustration title="조표가 바꾸는 음" caption="G 장조의 조표는 F♯ 한 개예요. 이 조성의 F는 F♯로 읽어요."><div className="rb-signature"><span>G 장조</span><b>♯</b><div><strong>F → F♯</strong><small>G · A · B · C · D · E · F♯</small></div></div></Illustration>
+  <Illustration title="올림표와 내림표" caption="올림표 ♯는 적힌 음을 반음 올리고, 내림표 ♭는 반음 내려요. G 장조는 F♯, F 장조는 B♭을 조표로 사용해요."><Chips items={[{top:'G 장조',main:'F → F♯',sub:'반음 올림',tone:'gold'},{top:'F 장조',main:'B → B♭',sub:'반음 내림',tone:'mint'}]}/></Illustration>
   <Callout>같은 소리처럼 들려도 음이름의 철자는 중요해요. G♭ 장조에서는 B가 아니라 C♭으로 적는 음이 있어요.</Callout>
  </>;
  case 3:return <>
   <SectionHead n="04" title="한 칸씩 건너뛰면 화음!" description="음계에서 원하는 도수부터 시작해 1·3·5음을 차곡차곡 쌓아요."/>
+  <Illustration title="세 음으로 세우는 화음" caption="음계의 한 음에서 시작해 음을 하나씩 건너뛰어 세 음을 쌓으면 3화음이에요. 아래에서부터 루트, 3음, 5음이라고 불러요."><img className="rb-scene" src={`${import.meta.env.BASE_URL}rulebook/scene-triads.webp`} alt="세 층의 화음 탑을 쌓는 모험 일러스트" loading="lazy"/></Illustration>
   <Illustration title="C 장조 1도에서 출발" caption="C를 고르고 D를 건너 E, F를 건너 G를 고르면 C–E–G가 돼요."><NoteLane notes={['C','D','E','F','G','A','B']} selected={[0,2,4]}/></Illustration>
   <Illustration title="화음 탑의 세 층" caption="루트는 시작 음, 그 위에는 3음과 5음을 놓아요."><Tower/></Illustration>
   <Illustration title="다른 도수에서도 같은 규칙" caption="D에서 시작해 F와 A를 쌓으면 Dm. 끝에 도달하면 음계의 처음으로 돌아와요."><NoteLane notes={['D','E','F','G','A','B','C']} selected={[0,2,4]}/><div className="rb-formula"><b>D</b><span>+</span><b>F</b><span>+</span><b>A</b><i>→</i><strong>Dm</strong></div></Illustration>
+  <Illustration title="음계 끝에서 다시 처음으로" caption="C 장조의 일곱 번째 음 B에서 시작하면 C를 건너 D, E를 건너 F를 골라요. 한 옥타브 위로 이어서 세면 B–D–F, 즉 Bdim이에요."><div className="rb-wrap-notes"><span><b>B</b><small>루트</small></span><i>→ C 건너뛰기 →</i><span><b>D</b><small>3음</small></span><i>→ E 건너뛰기 →</i><span><b>F</b><small>5음</small></span></div></Illustration>
   <Callout>카드를 고를 때 바로 옆 음이 아니라 하나를 건너뛰어요. 해당 조성의 일곱 음 안에서 선택하는 것이 중요해요.</Callout>
  </>;
  case 4:return <>
@@ -63,12 +69,14 @@ export function Chapter({index}:{index:number}) {
   <Illustration title="네 가지 3화음의 공식" caption="장·단·감·증은 두 3도의 반음 간격으로 구별해요."><div className="rb-quality-grid">{[['장','4','3','major'],['단','3','4','minor'],['감','3','3','dim'],['증','4','4','aug']].map(([q,a,b,c])=><div className={`rb-quality ${c}`} key={q}><b>{q}</b><div><strong>{a} + {b}</strong><small>반음 + 반음</small></div></div>)}</div></Illustration>
   <Illustration title="C 장3화음" caption="C→E는 4반음, E→G는 3반음이므로 C 장3화음이에요."><div className="rb-gapline"><b>C</b><span>4반음</span><b>E</b><span>3반음</span><b>G</b></div></Illustration>
   <Illustration title="A 단3화음" caption="A→C는 3반음, C→E는 4반음이므로 Am 단3화음이에요."><div className="rb-gapline minor"><b>A</b><span>3반음</span><b>C</b><span>4반음</span><b>E</b></div></Illustration>
+  <Illustration title="감화음과 증화음도 비교해요" caption="B–D–F는 3반음과 3반음이 쌓인 감3화음이고, C–E–G♯은 4반음과 4반음이 쌓인 증3화음이에요. C–E–G♯은 C 장음계만으로 만든 화음은 아니에요."><div className="rb-compare-rows"><div><strong>Bdim · 감</strong><span>B → D → F</span><small>3반음 + 3반음</small></div><div><strong>Caug · 증</strong><span>C → E → G♯</span><small>4반음 + 4반음</small></div></div></Illustration>
   <SmallText>자연단조의 3화음에는 장·단·감이 나타나요. 증3화음은 자유 연습의 화성단음계에서 비교할 수 있어요.</SmallText>
  </>;
  case 5:return <>
   <SectionHead n="06" title="로마 숫자는 화음의 주소" description="음계의 몇 번째 음에서 쌓았는지와 화음의 품질을 함께 알려줘요."/>
   <Illustration title="C 장조의 일곱 화음" caption="대문자 I·IV·V는 장, 소문자 ii·iii·vi는 단, vii°는 감화음이에요."><div className="rb-chord-chart">{[['I','C'],['ii','Dm'],['iii','Em'],['IV','F'],['V','G'],['vi','Am'],['vii°','Bdim']].map(([a,b])=><div key={a}><strong>{a}</strong><span>{b}</span></div>)}</div></Illustration>
   <Illustration title="A 자연단조의 일곱 화음" caption="자연단조에서는 i–ii°–III–iv–v–VI–VII 순서예요. v는 Em 단화음이에요."><div className="rb-chord-chart minor">{[['i','Am'],['ii°','Bdim'],['III','C'],['iv','Dm'],['v','Em'],['VI','F'],['VII','G']].map(([a,b])=><div key={a}><strong>{a}</strong><span>{b}</span></div>)}</div></Illustration>
+  <Illustration title="자연단조 v와 화성단조 V" caption="A 자연단조의 다섯째 화음은 E–G–B, Em(v)이에요. 화성단음계에서는 일곱째 음 G를 G♯으로 올려 E–G♯–B, E(V)가 돼요. 두 음계의 규칙을 구분해요."><div className="rb-compare-rows"><div><strong>자연단조 v · Em</strong><span>E · G · B</span><small>단3화음</small></div><div><strong>화성단조 V · E</strong><span>E · G♯ · B</span><small>장3화음</small></div></div></Illustration>
   <Illustration title="도수와 품질을 함께 읽기" caption="IV는 네 번째 음에 쌓은 장화음, ii°는 두 번째 음에 쌓은 감화음이에요."><Chips items={[{top:'대문자',main:'IV',sub:'장화음',tone:'gold'},{top:'소문자',main:'ii',sub:'단화음',tone:'mint'},{top:'작은 원',main:'vii°',sub:'감화음',tone:'lavender'}]}/></Illustration>
  </>;
  case 6:return <>
@@ -80,9 +88,11 @@ export function Chapter({index}:{index:number}) {
  </>;
  case 7:return <>
   <SectionHead n="08" title="같은 음, 다른 중심" description="상대조는 조표와 음 재료를 공유하지만 으뜸음이 달라요."/>
+  <Illustration title="두 중심을 지닌 같은 음의 세계" caption="상대 장조와 자연단조는 조표와 음 재료를 공유해요. C 장조는 C를, A 자연단조는 A를 중심으로 삼아 같은 음들도 다르게 들려요."><img className="rb-scene" src={`${import.meta.env.BASE_URL}rulebook/scene-relative.webp`} alt="같은 길을 공유하는 햇빛 마을과 달빛 마을 일러스트" loading="lazy"/></Illustration>
   <Illustration title="C 장조와 A 자연단조" caption="두 조성은 모두 흰 건반의 일곱 음을 쓰지만, C와 A를 각각 중심으로 느껴요."><div className="rb-relative"><div><span>☀ 태양 도시</span><strong>C 장조</strong><small>C D E F G A B</small></div><div className="rb-relative-link">같은 음<br/>다른 중심</div><div><span>☾ 달 동굴</span><strong>A 자연단조</strong><small>A B C D E F G</small></div></div></Illustration>
   <Illustration title="같은 C 화음의 다른 주소" caption="C–E–G는 C 장조에서는 I, A 자연단조에서는 III예요."><div className="rb-relative"><div><span>C 장조</span><strong>I</strong><small>C · E · G</small></div><div className="rb-relative-link">같은<br/>화음</div><div><span>A 자연단조</span><strong>III</strong><small>C · E · G</small></div></div></Illustration>
   <Illustration title="거울 지역: 소리는 같아도 철자는 달라요" caption="G♭ 장조의 IV는 C♭–E♭–G♭예요. C♭은 건반에서 B와 같은 높이지만 글자 순서가 달라요."><div className="rb-mirror"><div><span>표기</span><strong>C♭</strong></div><div className="rb-mirror-glass">≒</div><div><span>같은 건반</span><strong>B</strong></div></div></Illustration>
+  <Illustration title="이명동음과 화음 철자" caption="평균율 건반에서 C♭과 B, E♭과 D♯, G♭과 F♯은 각각 같은 건반이에요. 하지만 G♭ 장조의 IV는 음계에서 4·6·1도를 순서대로 쌓아 C♭–E♭–G♭으로 적어요."><div className="rb-compare-rows"><div><strong>G♭ 장조의 IV</strong><span>C♭ · E♭ · G♭</span><small>음계에 맞는 철자</small></div><div><strong>같은 건반의 다른 이름</strong><span>B · D♯ · F♯</span><small>소리는 같지만 철자가 달라요</small></div></div></Illustration>
   <SmallText>화성단음계는 자연단음계의 일곱 번째 음을 반음 올린 별도 모드예요. 기본 자연단조에 자동으로 섞지 않아요.</SmallText>
  </>;
  case 8:return <>
@@ -96,12 +106,15 @@ export function Chapter({index}:{index:number}) {
   <SectionHead n="10" title="실수는 발견의 시작" description="목숨 제한은 없어요. 힌트를 보고 직접 다시 만들며 배워요."/>
   <Illustration title="세 번 틀려도 괜찮아요" caption="첫 오답은 규칙을 안내하고, 두 번째는 관련 음을 강조해요. 세 번째에는 완성 경로를 보여 준 뒤 직접 재현해요."><Path items={['1 규칙 안내','2 관련 음 강조','3 완성 경로','직접 다시 만들기']}/></Illustration>
   <Illustration title="문항 점수" caption="첫 정답 100점, 한 번 틀린 뒤 70점, 두 번 틀린 뒤 40점, 안내 후 재현 20점. 힌트는 한 번당 15점이 줄어요."><Chips items={[{top:'첫 시도',main:'100',sub:'점',tone:'mint'},{top:'두 번째',main:'70',sub:'점',tone:'gold'},{top:'세 번째',main:'40',sub:'점',tone:'lavender'},{top:'안내 후',main:'20',sub:'점',tone:'mint'}]}/></Illustration>
+  <Illustration title="점수 계산 예시" caption="한 번 틀린 뒤 정답을 맞히면 기본 70점이에요. 그 문항에서 힌트를 한 번 썼다면 15점을 빼 55점이 돼요. 듣기는 감점되지 않으며 점수는 0점 아래로 내려가지 않아요."><Path items={['한 번 틀림','정답 70점','힌트 −15점','55점']}/></Illustration>
   <Illustration title="별을 모아 보세요" caption="완료하면 별 1개, 평균 75점 이상이면 2개, 평균 90점 이상이고 자동완성 없이 마치면 3개예요."><div className="rb-stars"><span><Star fill="currentColor"/> 완료</span><span><Star fill="currentColor"/><Star fill="currentColor"/> 75점 이상</span><span><Star fill="currentColor"/><Star fill="currentColor"/><Star fill="currentColor"/> 90점 이상 + 자동완성 없음</span></div></Illustration>
   <Illustration title="다시 만나면 좋은 개념" caption="어려웠던 문항은 도전의 탑의 복습 목록에서 다시 풀어요. 목록으로 돌아가 다시 열어, 힌트 없이 첫 시도에 세 차례 맞히면 목록에서 사라져요."><Path items={['어려운 문제','복습 목록','스스로 정답','3회 성공']}/></Illustration>
+  <Illustration title="복습은 다시 열어서 세 번" caption="복습 문제를 열어 힌트 없이 첫 시도에 맞힌 뒤 목록으로 돌아가요. 같은 문제를 다시 열어 같은 방법으로 총 세 차례 성공하면 복습 목록에서 사라져요."><Path items={['열기 · 정답 ①','다시 열기 · 정답 ②','다시 열기 · 정답 ③','복습 완료']}/></Illustration>
   <SmallText>재도전해도 기존의 최고 별은 유지돼요. 일부 문항은 같은 종류의 다른 도수로 세션 말미에 다시 연습할 수 있어요.</SmallText>
  </>;
  case 10:return <>
   <SectionHead n="11" title="소리와 기록을 내게 맞게" description="편한 방식으로 듣고, 학습 기록을 안전하게 보관해요."/>
+  <Illustration title="한꺼번에 듣기와 차례로 듣기" caption="C–E–G를 동시에 울리면 블록 코드, C 다음 E, 다음 G를 차례로 울리면 아르페지오예요. 같은 구성음도 연주 방식에 따라 다르게 들려요."><div className="rb-compare-rows"><div><strong>블록 코드</strong><span>C + E + G</span><small>세 음을 동시에</small></div><div><strong>아르페지오</strong><span>C → E → G</span><small>한 음씩 차례로</small></div></div></Illustration>
   <Illustration title="소리가 들리지 않나요?" caption="먼저 화면을 한 번 눌러 오디오를 시작하고, 음소거와 기기 음량을 확인해요."><div className="rb-sound"><div><Volume2 size={34}/><span>앱 음량</span></div><div className="rb-sound-wave"><i/><i/><i/><i/><i/><i/><i/></div><div><Headphones size={34}/><span>기기 음량</span></div></div></Illustration>
   <Illustration title="설정에서 조절할 수 있어요" caption="음량·음색·진동, 음이름 표기, 움직임 줄이기, 청음의 시각 대체, 고급 지역 표시를 조절해요."><Chips items={[{main:'♫ 음량',sub:'듣기',tone:'mint'},{main:'A 음이름',sub:'표기 방식',tone:'gold'},{main:'◌ 움직임',sub:'줄이기',tone:'lavender'},{main:'✦ 고급',sub:'거울 지역',tone:'mint'}]}/></Illustration>
   <Illustration title="기록은 이 브라우저에 저장돼요" caption="완료와 설정은 이 기기의 브라우저에 저장돼요. 설정에서 JSON으로 내보내고 다른 기기에서 가져올 수 있어요."><Path items={['현재 브라우저','기록 내보내기','JSON 파일','기록 가져오기']}/></Illustration>
