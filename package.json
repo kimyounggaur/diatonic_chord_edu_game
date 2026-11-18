@@ -15,7 +15,13 @@
     "react-dom": "^19.2.0",
     "zustand": "^5.0.8",
     "phaser": "^3.90.0",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^0.468.0",
+    "tailwindcss": "^4.1.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.0",
+    "class-variance-authority": "^0.7.1",
+    "@radix-ui/react-slot": "^1.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

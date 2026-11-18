@@ -28,7 +28,7 @@ function Callout({children}:{children:ReactNode}) { return <aside className="rb-
 function Tower({notes=['C','E','G'],symbol='C'}:{notes?:string[];symbol?:string}) {return <div className="rb-tower-wrap"><div className="rb-tower">{[...notes].reverse().map((n,i)=><div className={`rb-tower-stone stone-${i}`} key={`${n}-${i}`}><small>{['5음','3음','루트'][i]}</small><strong>{n}</strong></div>)}</div><div className="rb-tower-label"><span>완성된 화음</span><b>{symbol}</b><small>{notes.join(' · ')}</small></div></div>}
 function SectionHead({n,title,description}:{n:string;title:string;description:string}) {return <div className="rb-section-heading"><div><span>CHAPTER {n} · TON TERRA</span><h2>{title}</h2><p>{description}</p></div><div className="rb-section-emblem" aria-hidden="true"><Music2 size={26}/></div></div>}
 
-function Chapter({index}:{index:number}) {
+export function Chapter({index}:{index:number}) {
  switch(index) {
  case 0:return <>
   <SectionHead n="01" title="왕국을 복원할 준비가 됐나요?" description="음악이 처음이어도 괜찮아요. 차근차근 직접 쌓으며 원리를 발견해요."/>
